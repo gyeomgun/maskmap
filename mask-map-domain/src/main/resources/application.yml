@@ -1,0 +1,4 @@
+resource:
+  img: file:///Users/hyungyeom/temp/img/
+server:
+  port: 80

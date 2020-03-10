@@ -1,0 +1,7 @@
+keystore.p12
+/.idea
+/frontend/dist
+/mask-map-batch/target
+/mask-map-domain/target
+/mask-map-web/target
+/mask-map-web/src/main/resources/static
