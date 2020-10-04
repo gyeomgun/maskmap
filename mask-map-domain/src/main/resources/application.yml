@@ -2,3 +2,9 @@ resource:
   img: file:///Users/hyungyeom/temp/img/
 server:
   port: 80
+feign:
+  client:
+    config:
+      mask:
+        connectTimeout: 3000
+        readTimeout: 5000

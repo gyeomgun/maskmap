@@ -60,4 +60,12 @@ class DomainConfigTest extends spock.lang.Specification {
         then:
         actual.size() > 1
     }
+
+    def "검색"() {
+        when:
+        def actual = mapService.search("awef",10);
+
+        then:
+        true
+    }
 }

@@ -2,6 +2,7 @@ package com.hg.project.maskmap.domain.config;
 
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import feign.Retryer;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -29,7 +30,7 @@ public class DomainConfig extends AbstractMongoConfiguration {
 
     @Override
     public MongoClient mongoClient() {
-        String uri = "mongodb://";
+        String uri = "mongodb://27.96.134.172:38017";
         MongoClientURI mongoUri = new MongoClientURI(uri);
         return new MongoClient(mongoUri);
     }
@@ -57,4 +58,6 @@ public class DomainConfig extends AbstractMongoConfiguration {
     public Encoder encoder() {
         return new Encoder.Default();
     }
+    @Bean
+    public Retryer retryer() { return Retryer.NEVER_RETRY; }
 }

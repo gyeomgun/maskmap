@@ -3,6 +3,7 @@ package com.hg.project.maskmap.domain.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.RateLimiter;
 import com.hg.project.maskmap.domain.client.MaskDataClient;
 import com.hg.project.maskmap.domain.dto.mask.MaskDataCommonResponse;
 import com.hg.project.maskmap.domain.dto.mask.StoreInfo;
@@ -20,8 +21,11 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,11 +36,7 @@ public class MapService {
     private final MaskDataClient maskDataClient;
 
     public List<Pharmacy> findByGeoLocation(Double lon, Double lat, Integer maxDistance) throws IOException {
-        String store = maskDataClient.getStore(lat, lon, maxDistance);
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        MaskDataCommonResponse response = objectMapper.readValue(store, MaskDataCommonResponse.class);
-
+        MaskDataCommonResponse response = getMaskDataCommonResponse(lon, lat, maxDistance);
         Query query = new Query();
         query.addCriteria(Criteria.where("pos").nearSphere(new Point(lon, lat)).maxDistance(maxDistance));
         query.limit(50);
@@ -48,6 +48,28 @@ public class MapService {
         return response.getStores().stream()
                 .map(s -> convert(s, pharmacyMap))
                 .collect(Collectors.toList());
+
+    }
+
+    private MaskDataCommonResponse getMaskDataCommonResponse(Double lon, Double lat, Integer maxDistance) throws IOException {
+        try {
+            String store = maskDataClient.getStore(lat, lon, maxDistance);
+            ObjectMapper objectMapper = new ObjectMapper();
+            MaskDataCommonResponse response = objectMapper.readValue(store, MaskDataCommonResponse.class);
+
+            response.getStores().stream().peek(s -> s.makeId()).forEach(s -> mongoTemplate.save(s));
+
+            return response;
+        } catch (Exception ex) {
+            Query query = new Query();
+            query.addCriteria(Criteria.where("pos").nearSphere(new Point(lon, lat)).maxDistance(maxDistance));
+            query.limit(50);
+            List<StoreInfo> pharmacies = mongoTemplate.find(query, StoreInfo.class);
+            MaskDataCommonResponse response = new MaskDataCommonResponse();
+            response.setStores(pharmacies);
+            response.setCount(-1L);
+            return response;
+        }
 
     }
 
@@ -119,5 +141,16 @@ public class MapService {
         query.addCriteria(Criteria.where("_id").is(id));
         Pharmacy one = mongoTemplate.findOne(query, Pharmacy.class);
         return one.getStateHistory();
+    }
+
+    public List<Pharmacy> search(String keyword, int count) {
+        Query query = new Query();
+        Pattern pat = Pattern.compile(keyword);
+        Criteria cr = (new Criteria()).orOperator(Criteria.where("addr").regex(pat),
+                Criteria.where("name").regex(pat));
+        query.addCriteria(cr);
+        query.limit(count);
+        List<Pharmacy> pharmacies = mongoTemplate.find(query, Pharmacy.class);
+        return pharmacies;
     }
 }
